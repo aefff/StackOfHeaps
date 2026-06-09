@@ -51,4 +51,18 @@ describe('Task Heap Core Ops', () => {
         expect(second?.priority).toBe(50);
         expect(second?.name).toBe('Medium');
     });
+
+    it('Should update a task priority and correctly restructure the heap', () => {
+        const heap = new TaskHeap();
+
+        heap.add({ name: 'Review logs', priority: 10 });
+        heap.add({ name: 'Fix text alignment', priority: 5 });
+        heap.add({ name: 'Database emergency', priority: 2 }); // Currently at the bottom
+
+        heap.updatePriority('Database emergency', 99);
+
+        const topTask = heap.extract();
+        expect(topTask?.name).toBe('Database emergency');
+        expect(topTask?.priority).toBe(99);
+    });
 });

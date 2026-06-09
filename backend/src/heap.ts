@@ -1,12 +1,15 @@
 export class TaskHeap {
     public heap: Task[];
+    public indexMap: Record<string, number>;
 
     constructor() {
         this.heap = [];
+        this.indexMap = {};
     }
 
     add(newTask: Task) {
         this.heap.push(newTask);
+        this.indexMap[newTask.name] = this.heap.length - 1
 
         if (this.heap.length > 1) {
             this.swap(this.heap.length - 1, newTask);
@@ -26,12 +29,31 @@ export class TaskHeap {
         return maxTask;
     }
 
+    updatePriority(name: string, priority: number) {
+        let i = this.indexMap[name];
+        let oldP = this.heap[i].priority;
+
+        if (oldP != priority) {
+            this.heap[i].priority = priority;
+            if (oldP < priority) {
+                this.swap(i, this.heap[i]);
+            } else {
+                this.antiSwap(i)
+            }
+        }
+    }
+
+
+
+
     swap(i: number, newTask: Task) {
         if (i > 0) {
             let parent: number = Math.floor((i - 1) / 2);
+
             if (this.heap[parent].priority < newTask.priority) {
-                [this.heap[parent], this.heap[i]] =
-                    [newTask, this.heap[parent]];
+
+                this.transfer(i, parent);
+
                 this.swap(parent, newTask);
             }
         }
@@ -61,6 +83,8 @@ export class TaskHeap {
     transfer(i1: number, i2: number) {
         [this.heap[i1], this.heap[i2]] =
             [this.heap[i2], this.heap[i1]];
+        this.indexMap[this.heap[i1].name] = i1;
+        this.indexMap[this.heap[i2].name] = i2
     }
 }
 
