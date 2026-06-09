@@ -43,7 +43,30 @@ export class TaskHeap {
         }
     }
 
+    delete(name: string): void {
+        let i = this.indexMap[name];
+        if (i === undefined) return; // Guard clause if task doesn't exist
 
+        if (i === this.heap.length - 1) {
+            this.heap.pop();
+            delete this.indexMap[name];
+            return;
+        }
+
+        let removedPriority = this.heap[i].priority;
+
+        let movedTask = this.heap.pop()!;
+        this.heap[i] = movedTask;
+        this.indexMap[movedTask.name] = i;
+
+        delete this.indexMap[name];
+
+        if (movedTask.priority > removedPriority) {
+            this.swap(i, this.heap[i]);
+        } else {
+            this.antiSwap(i);
+        }
+    }
 
 
     swap(i: number, newTask: Task) {
