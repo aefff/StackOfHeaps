@@ -7,6 +7,22 @@ export class TaskHeap {
         this.indexMap = {};
     }
 
+
+
+    public exportRawHeap(): Task[] {
+        return [...this.heap];
+    }
+
+    public static fromRawHeap(raw: Task[]) : TaskHeap {
+        const inst = new TaskHeap();
+        for (const task of raw) {
+            inst.add(task);
+        }
+
+        return inst;
+    }
+
+
     add(newTask: Task) {
         this.heap.push(newTask);
         this.indexMap[newTask.name] = this.heap.length - 1
@@ -111,7 +127,7 @@ export class TaskHeap {
     }
 }
 
-interface Task {
+export interface Task {
     name: string;
     priority: number;
 }

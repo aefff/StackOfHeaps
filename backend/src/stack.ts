@@ -1,10 +1,28 @@
-import {TaskHeap} from "./heap.js";
+import {TaskHeap, Task} from "./heap.js";
+import { randomUUID } from "node:crypto";
 
 export class HeapStack {
     public stack: stackMember[];
+    public id : string;
 
-    constructor() {
+    constructor(id? : string) {
         this.stack = [];
+        this.id = id ?? randomUUID();
+    }
+
+    public exportRawStack(): snapStack {
+        return {id: this.id, contents: this.stack.map(item => ({
+            name: item.name,
+            heap: item.heap.exportRawHeap()
+        }))};
+    }
+
+    public static fromRawStack(raw: snapStack): HeapStack {
+        const newStack = new HeapStack(raw.id);
+        for (const h of raw.contents) {
+            newStack.pushStack(h.name, TaskHeap.fromRawHeap(h.heap));
+        }
+        return newStack;
     }
 
     get size() : number {
@@ -31,4 +49,14 @@ export class HeapStack {
 interface stackMember {
     name: string;
     heap: TaskHeap;
+}
+
+interface snapStack {
+    id: string;
+    contents: snapShot[];
+}
+
+interface snapShot {
+    name: string;
+    heap: Task[];
 }
