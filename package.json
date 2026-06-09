@@ -1,0 +1,27 @@
+{
+  "name": "stackoheaps",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aefff/StackOfHeaps.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/aefff/StackOfHeaps/issues"
+  },
+  "homepage": "https://github.com/aefff/StackOfHeaps#readme",
+  "devDependencies": {
+    "@types/node": "^25.9.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
+  }
+}
