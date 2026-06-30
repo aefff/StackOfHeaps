@@ -1,5 +1,6 @@
 import { describe, test, expect, afterAll } from 'vitest';
 import dotenv from 'dotenv';
+import * as fs from 'fs/promises';
 import { Pool } from 'pg';
 
 dotenv.config();
@@ -17,17 +18,18 @@ const BASE_URL = 'http://localhost:3000/api';
 describe('StackOHeaps API Integration Tests', () => {
 
     afterAll(async () => {
-        console.log('\nCleaning up test database records...');
+        console.log('\nCleaning up test database records and files...');
         try {
             await pool.query('TRUNCATE TABLE users, projects RESTART IDENTITY CASCADE;');
-            console.log('Test database cleaned successfully.');
+            await fs.rm('./storage', { recursive: true, force: true });
+
+            console.log('Test environment cleaned successfully.');
         } catch (err: any) {
-            console.error('Failed to clean up database:', err.message);
+            console.error('Failed to clean up:', err.message);
         } finally {
             await pool.end();
         }
     });
-
     test('GET /api/test should return status 200', async () => {
         const res = await fetch(`${BASE_URL}/test`);
         expect(res.status).toBe(200);
@@ -88,6 +90,72 @@ describe('StackOHeaps API Integration Tests', () => {
         });
 
         expect(res.status).toBe(400);
+    });
+
+    test('POST /api/projects should successfully create a project record and save file', async () => {
+        const loginRes = await fetch(`${BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: randomUser,
+                password: 'test_secure_password'
+            })
+        });
+        const { token } = await loginRes.json();
+
+        const mockStackPayload = {
+            projectName: "My First Test Heap",
+            stackId: "abc-123-xyz",
+            rawStackData: {
+                id: "abc-123-xyz",
+                version: 1,
+                elements: [
+                    { heapId: 1, type: "max-heap", values: [99, 50, 12] },
+                    { heapId: 2, type: "min-heap", values: [1, 5, 8] }
+                ]
+            }
+        };
+
+        const res = await fetch(`${BASE_URL}/projects`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(mockStackPayload)
+        });
+
+        expect(res.status).toBe(201);
+        const data = await res.json();
+        expect(data.message).toContain("Project created and stack saved successfully");
+        expect(data.project.project_name).toBe("My First Test Heap");
+
+        (global as any).testProjectId = data.project.id;
+    });
+
+    test('GET /api/projects/:id/stream should stream back the correct payload from disk', async () => {
+        const loginRes = await fetch(`${BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: randomUser,
+                password: 'test_secure_password'
+            })
+        });
+        const { token } = await loginRes.json();
+        const projectId = (global as any).testProjectId;
+
+        const res = await fetch(`${BASE_URL}/projects/${projectId}/stream`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        expect(res.status).toBe(200);
+        expect(res.headers.get('content-type')).toContain('application/json');
+
+        const streamedData = await res.json();
+        expect(streamedData.id).toBe("abc-123-xyz");
+        expect(streamedData.elements[0].values[0]).toBe(99);
     });
 
     test('DELETE /api/auth/deleteAccount should fail with incorrect password', async () => {
