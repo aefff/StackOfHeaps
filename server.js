@@ -52,7 +52,7 @@ app.post("/api/auth/register", async (req, res) => {
     } catch (error) {
         console.error("Registration error details: " + error.message);
 
-        if (error.code === 23505) {
+        if (error.code === '23505') {
             return res.status(409).json({error: "Username already taken"});
         }
 
