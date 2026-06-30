@@ -9,8 +9,21 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata_dev:/var/lib/postgresql/data
       - ./db/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql
 
+  postgres_test_db:
+    image: postgres:15-alpine
+    container_name: heapstack_test_db
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: heapstack_test_auth
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata_test:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql
 volumes:
-  pgdata:
+  pgdata_dev:
+  pgdata_test:

@@ -10,17 +10,20 @@ const app = express();
 const port = process.env.PORT || 3000;
 app.use(express.json());
 
+const isTest = process.env.NODE_ENV === 'test';
+
 const pool = new Pool({
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
     host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    database: process.env.DB_NAME,
-})
+    port: isTest ? process.env.TEST_DB_PORT : process.env.DB_PORT,
+    user: isTest ? process.env.TEST_DB_USER : process.env.DB_USER,
+    password: isTest ? process.env.TEST_DB_PASSWORD : process.env.DB_PASSWORD,
+    database: isTest ? process.env.TEST_DB_NAME : process.env.DB_NAME,
+});
 
 pool.query('SELECT NOW()', (err, res) =>  {
     if (err) {
-        console.log("Connction failed");
+        console.log(err);
+        console.log("Connection failed");
     } else {
         console.log("Connected!");
     }
@@ -84,7 +87,7 @@ app.post("/api/auth/login", async (req, res) => {
         const user = dbResult.rows[0];
 
         if (user.password_hash !== password) {
-            return res.status(400).json({ error: "Invalid username or password" });
+            return res.status(409).json({ error: "Invalid username or password" });
         }
 
         const token = jwt.sign(
