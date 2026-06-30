@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon server.js",
+    "dev": "tsx watch server.ts",
     "test": "NODE_ENV=test vitest",
-    "test:all": "concurrently \"NODE_ENV=test node server.js\" \"npm run test\""
+    "test:all": "concurrently \"NODE_ENV=test tsx server.ts\" \"npm run test\""
   },
   "repository": {
     "type": "git",
@@ -21,11 +21,16 @@
   },
   "homepage": "https://github.com/aefff/StackOfHeaps#readme",
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.9.2",
+    "@types/pg": "^8.20.0",
     "@vitest/ui": "^4.1.9",
     "concurrently": "^9.2.3",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
+    "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8"
   },
@@ -46,6 +51,7 @@
     "expect-type": "^1.3.0",
     "express": "^5.2.1",
     "fdir": "^6.5.0",
+    "jsonstream-next": "^3.0.0",
     "jsonwebtoken": "^9.0.3",
     "lightningcss": "^1.32.0",
     "lightningcss-linux-x64-gnu": "^1.32.0",

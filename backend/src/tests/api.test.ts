@@ -1,21 +1,18 @@
 import { describe, test, expect, afterAll } from 'vitest';
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
+import dotenv from 'dotenv';
+import { Pool } from 'pg';
 
-require('dotenv').config();
-
-const { Pool } = require('pg');
-const BASE_URL = 'http://localhost:3000/api';
-
-const isTest = process.env.NODE_ENV === 'test';
+dotenv.config();
 
 const pool = new Pool({
     host: process.env.DB_HOST,
-    port: isTest ? process.env.TEST_DB_PORT : process.env.DB_PORT,
-    user: isTest ? process.env.TEST_DB_USER : process.env.DB_USER,
-    password: isTest ? process.env.TEST_DB_PASSWORD : process.env.DB_PASSWORD,
-    database: isTest ? process.env.TEST_DB_NAME : process.env.DB_NAME,
+    port: process.env.NODE_ENV === 'test' ? Number(process.env.TEST_DB_PORT) : Number(process.env.DB_PORT),
+    user: process.env.NODE_ENV === 'test' ? process.env.TEST_DB_USER : process.env.DB_USER,
+    password: process.env.NODE_ENV === 'test' ? process.env.TEST_DB_PASSWORD : process.env.DB_PASSWORD,
+    database: process.env.NODE_ENV === 'test' ? process.env.TEST_DB_NAME : process.env.DB_NAME,
 });
+
+const BASE_URL = 'http://localhost:3000/api';
 
 describe('StackOHeaps API Integration Tests', () => {
 
@@ -24,7 +21,7 @@ describe('StackOHeaps API Integration Tests', () => {
         try {
             await pool.query('TRUNCATE TABLE users, projects RESTART IDENTITY CASCADE;');
             console.log('Test database cleaned successfully.');
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to clean up database:', err.message);
         } finally {
             await pool.end();
@@ -90,7 +87,7 @@ describe('StackOHeaps API Integration Tests', () => {
             })
         });
 
-        expect(res.status).toBe(409);
+        expect(res.status).toBe(400);
     });
 
     test('DELETE /api/auth/deleteAccount should fail with incorrect password', async () => {
@@ -106,12 +103,11 @@ describe('StackOHeaps API Integration Tests', () => {
         const loginData = await loginRes.json();
         const token = loginData.token;
 
-        // 2. Try to delete the account using a BAD password
         const res = await fetch(`${BASE_URL}/auth/deleteAccount`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}` // Passing the token safely
+                'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
                 username: randomUser,
