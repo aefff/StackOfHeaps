@@ -25,14 +25,39 @@ pool.query('SELECT NOW()', (err, res) =>  {
     }
 })
 
+app.get('/api/test', (req, res) => {
+    res.send("WSL Server is alive and reaching WebStorm!");
+});
+
 app.post("/api/auth/register", async (req, res) => {
     const {username, password} = req.body;
 
     if (!username || !password) {
-        return res.status(400).send({"Username and password are required": false});
+        return res.status(400).json({error: "Username and password are required"});
     }
 
-    
+    try {
+        const queryText = `
+            INSERT INTO users (username, password_hash) 
+            VALUES ($1, $2)
+            RETURNING id, username, created_at;
+        `;
+        const values = [username, password];
+        const dbResult = await pool.query(queryText, values);
+
+        res.status(201).json({
+            message: "User registered successfully!",
+            user: dbResult.rows[0],
+        })
+    } catch (error) {
+        console.error("Registration error details: " + error.message);
+
+        if (error.code === 23505) {
+            return res.status(409).json({error: "Username already taken"});
+        }
+
+        return res.status(500).json({error: "Internal Server Error"});
+    }
 })
 
 app.listen(port, () => {console.log(`Server started on port ${port}`)});
