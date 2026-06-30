@@ -1,0 +1,16 @@
+services:
+  postgres_db:
+    image: postgres:15-alpine
+    container_name: heapstack_db
+    environment:
+      POSTGRES_USER: engine_admin
+      POSTGRES_PASSWORD: super_secure_password_123
+      POSTGRES_DB: heapstack_auth
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql
+
+volumes:
+  pgdata:
