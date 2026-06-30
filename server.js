@@ -25,4 +25,14 @@ pool.query('SELECT NOW()', (err, res) =>  {
     }
 })
 
+app.post("/api/auth/register", async (req, res) => {
+    const {username, password} = req.body;
+
+    if (!username || !password) {
+        return res.status(400).send({"Username and password are required": false});
+    }
+
+    
+})
+
 app.listen(port, () => {console.log(`Server started on port ${port}`)});
