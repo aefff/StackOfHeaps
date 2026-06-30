@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken');
 const express = require('express');
 const { Pool } = require('pg');
 const app = express();
+const bcrypt = require("bcrypt");
 const port = process.env.PORT || 3000;
 app.use(express.json());
 
@@ -41,12 +42,15 @@ app.post("/api/auth/register", async (req, res) => {
     }
 
     try {
+        const saltRounds = 10;
+        const hashed_password = await bcrypt.hash(password, saltRounds);
+
         const queryText = `
             INSERT INTO users (username, password_hash) 
             VALUES ($1, $2)
             RETURNING id, username, created_at;
         `;
-        const values = [username, password];
+        const values = [username, hashed_password];
         const dbResult = await pool.query(queryText, values);
 
         res.status(201).json({
@@ -86,7 +90,7 @@ app.post("/api/auth/login", async (req, res) => {
 
         const user = dbResult.rows[0];
 
-        if (user.password_hash !== password) {
+        if (!(await bcrypt.compare(password, user.password_hash))) {
             return res.status(409).json({ error: "Invalid username or password" });
         }
 
@@ -142,7 +146,7 @@ app.delete("/api/auth/deleteAccount", async (req, res) => {
             return res.status(404).json({ error: "Invalid username" });
         }
 
-        if (dbResult.rows[0].password_hash !== password) {
+        if (!(await bcrypt.compare(password, dbResult.rows[0].password_hash))) {
             return res.status(400).json({ error: "Incorrect password" });
         }
 
@@ -159,5 +163,12 @@ app.delete("/api/auth/deleteAccount", async (req, res) => {
         return res.status(500).json({ error: "Internal Server Error" });
     }
 });
+
+
+
+
+
+
+
 
 app.listen(port, () => {console.log(`Server started on port ${port}`)});
