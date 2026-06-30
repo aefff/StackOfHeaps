@@ -92,4 +92,73 @@ describe('StackOHeaps API Integration Tests', () => {
 
         expect(res.status).toBe(409);
     });
+
+    test('DELETE /api/auth/deleteAccount should fail with incorrect password', async () => {
+        // 1. Log in first to capture a fresh valid JWT token
+        const loginRes = await fetch(`${BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: randomUser,
+                password: 'test_secure_password'
+            })
+        });
+        const loginData = await loginRes.json();
+        const token = loginData.token;
+
+        // 2. Try to delete the account using a BAD password
+        const res = await fetch(`${BASE_URL}/auth/deleteAccount`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` // Passing the token safely
+            },
+            body: JSON.stringify({
+                username: randomUser,
+                password: 'wrong_password_here'
+            })
+        });
+
+        expect(res.status).toBe(400);
+        const data = await res.json();
+        expect(data.error).toBe("Incorrect password");
+    });
+
+    test('DELETE /api/auth/deleteAccount should completely wipe the user record', async () => {
+        const loginRes = await fetch(`${BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: randomUser,
+                password: 'test_secure_password'
+            })
+        });
+        const loginData = await loginRes.json();
+        const token = loginData.token;
+
+        const res = await fetch(`${BASE_URL}/auth/deleteAccount`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                username: randomUser,
+                password: 'test_secure_password'
+            })
+        });
+
+        expect(res.status).toBe(200);
+
+        const verifyRes = await fetch(`${BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: randomUser,
+                password: 'test_secure_password'
+            })
+        });
+
+        expect(verifyRes.status).toBe(400);
+    });
 });
