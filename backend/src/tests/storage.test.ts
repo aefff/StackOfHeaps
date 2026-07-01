@@ -6,6 +6,7 @@ import { TaskHeap } from '../utils/heap.js';
 
 describe('StorageHandler - Integration Tests', () => {
     const TEST_DIR = './test_storage';
+    const MOCK_UID = 'test-user-uuid-123';
     let handler: StorageHandler;
 
     beforeEach(async () => {
@@ -25,7 +26,7 @@ describe('StorageHandler - Integration Tests', () => {
         heap.add({ name: 'Verify File IO', priority: 10 });
         stack.pushStack('QA Layer', heap);
 
-        await handler.storeNewRecord(stack);
+        await handler.storeNewRecord(stack, MOCK_UID);
 
         const expectedPath = `${TEST_DIR}/stack_${stack.id}.json`;
         const fileExists = await fs.access(expectedPath).then(() => true).catch(() => false);
@@ -42,9 +43,9 @@ describe('StorageHandler - Integration Tests', () => {
 
         originalStack.pushStack('Backend System', backendHeap);
 
-        await handler.storeNewRecord(originalStack);
+        await handler.storeNewRecord(originalStack, MOCK_UID);
 
-        const loadedStack = await handler.retrieveRecord(originalStack.id);
+        const loadedStack = await handler.retrieveRecord(originalStack.id, MOCK_UID);
 
         expect(loadedStack.id).toBe(originalStack.id);
         expect(loadedStack.size).toBe(1);
@@ -56,7 +57,7 @@ describe('StorageHandler - Integration Tests', () => {
 
     it('Should throw a descriptive domain error when trying to fetch a non-existent ID', async () => {
         // Act & Assert: We expect a rejection that matches our custom error signature
-        await expect(handler.retrieveRecord('fake-id-123')).rejects.toThrowError(
+        await expect(handler.retrieveRecord('fake-id-123', MOCK_UID)).rejects.toThrowError(
             'Record not found: No file exists for stack ID fake-id-123'
         );
     });

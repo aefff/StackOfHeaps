@@ -3,7 +3,7 @@ import { HeapStack } from "./stack.js";
 import {LockManager} from "./lockManager.js";
 
 export class StorageHandler {
-    private storageDir: string;
+    private readonly storageDir: string;
 
     private storageLockHandler = new Map<string, LockManager>();
 
