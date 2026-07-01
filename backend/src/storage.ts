@@ -24,20 +24,6 @@ export class StorageHandler {
         }
     }
 
-//    public async storeNewRecord(stack: HeapStack, requesterUUID: string): Promise<void> {
-//        try {
-//            await this.ensureDirectoryExists();
-//
-//            const filename = this.getFilePath(stack.id);
-//            const serializedData = JSON.stringify(stack.exportRawStack(), null, 2);
-//
-//            await fs.writeFile(filename, serializedData, "utf8");
-//        } catch (e) {
-//            console.error(`Error saving record for stack ID ${stack.id}:`, e);
-//            throw new Error("Failed to write data record to disk.");
-//        }
-//    }
-
     public async storeNewRecord(stack: HeapStack, requesterUUID: string): Promise<void> {
         const filename = this.getFilePath(stack.id);
 
@@ -86,24 +72,4 @@ export class StorageHandler {
             lock.releaseRead(requesterUUID);
         }
     }
-
-//    public async retrieveRecord(id: string): Promise<HeapStack> {
-//        try {
-//            const filename = this.getFilePath(id);
-//            const rawPayload = await this.loadJSON(filename);
-//
-//            return HeapStack.fromRawStack(rawPayload);
-//        } catch (e: any) {
-//            if (e.code === "ENOENT") {
-//                throw new Error(`Record not found: No file exists for stack ID ${id}`);
-//            }
-//            console.error(`Error retrieving record for stack ID ${id}:`, e);
-//            throw new Error("Issue reading file or processing payload data.");
-//        }
-//    }
-//
-//    private async loadJSON(filename: string): Promise<any> {
-//        const buffer = await fs.readFile(filename, "utf8");
-//        return JSON.parse(buffer);
-//    }
 }
