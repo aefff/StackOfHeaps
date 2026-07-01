@@ -1,8 +1,11 @@
 import * as fs from "fs/promises";
 import { HeapStack } from "./stack.js";
+import {LockManager} from "./lockManager.js";
 
 export class StorageHandler {
     private storageDir: string;
+
+    private storageLockHandler = new Map<string, LockManager>();
 
     constructor(storageDir: string = "./storage") {
         this.storageDir = storageDir;
@@ -21,37 +24,86 @@ export class StorageHandler {
         }
     }
 
-    public async storeNewRecord(stack: HeapStack): Promise<void> {
+//    public async storeNewRecord(stack: HeapStack, requesterUUID: string): Promise<void> {
+//        try {
+//            await this.ensureDirectoryExists();
+//
+//            const filename = this.getFilePath(stack.id);
+//            const serializedData = JSON.stringify(stack.exportRawStack(), null, 2);
+//
+//            await fs.writeFile(filename, serializedData, "utf8");
+//        } catch (e) {
+//            console.error(`Error saving record for stack ID ${stack.id}:`, e);
+//            throw new Error("Failed to write data record to disk.");
+//        }
+//    }
+
+    public async storeNewRecord(stack: HeapStack, requesterUUID: string): Promise<void> {
+        const filename = this.getFilePath(stack.id);
+
+        if (!this.storageLockHandler.has(stack.id)) {
+            this.storageLockHandler.set(stack.id, new LockManager(stack.id));
+        }
+
+        const serializedData = JSON.stringify(stack.exportRawStack(), null, 2);
+        const lock: LockManager = this.storageLockHandler.get(stack.id)!;
+
+        await lock.acquireWrite(requesterUUID);
+
         try {
             await this.ensureDirectoryExists();
-
-            const filename = this.getFilePath(stack.id);
-            const serializedData = JSON.stringify(stack.exportRawStack(), null, 2);
-
             await fs.writeFile(filename, serializedData, "utf8");
         } catch (e) {
-            console.error(`Error saving record for stack ID ${stack.id}:`, e);
-            throw new Error("Failed to write data record to disk.");
+            console.error(`Error saving record for stack ID ${stack.id}: `, e);
+        } finally {
+            lock.releaseWrite(requesterUUID);
         }
     }
 
-    public async retrieveRecord(id: string): Promise<HeapStack> {
-        try {
-            const filename = this.getFilePath(id);
-            const rawPayload = await this.loadJSON(filename);
+    public async retrieveRecord(id: string, requesterUUID: string): Promise<HeapStack> {
+        const filename = this.getFilePath(id);
 
-            return HeapStack.fromRawStack(rawPayload);
+        if (!this.storageLockHandler.has(id)) {
+            this.storageLockHandler.set(id, new LockManager(id));
+        }
+
+        const lock: LockManager = this.storageLockHandler.get(id)!;
+        await lock.acquireRead(requesterUUID);
+
+        try {
+            await this.ensureDirectoryExists();
+            const rawData = await fs.readFile(filename, "utf8");
+
+            return HeapStack.fromRawStack(JSON.parse(rawData));
         } catch (e: any) {
             if (e.code === "ENOENT") {
-                throw new Error(`Record not found: No file exists for stack ID ${id}`);
+                console.error(`Record not found: No file exists for id: `, id);
+            } else {
+                console.error(`Error retrieving record for stack ID ${id}:`, e);
             }
-            console.error(`Error retrieving record for stack ID ${id}:`, e);
-            throw new Error("Issue reading file or processing payload data.");
+            throw e;
+        } finally {
+            lock.releaseRead(requesterUUID);
         }
     }
 
-    private async loadJSON(filename: string): Promise<any> {
-        const buffer = await fs.readFile(filename, "utf8");
-        return JSON.parse(buffer);
-    }
+//    public async retrieveRecord(id: string): Promise<HeapStack> {
+//        try {
+//            const filename = this.getFilePath(id);
+//            const rawPayload = await this.loadJSON(filename);
+//
+//            return HeapStack.fromRawStack(rawPayload);
+//        } catch (e: any) {
+//            if (e.code === "ENOENT") {
+//                throw new Error(`Record not found: No file exists for stack ID ${id}`);
+//            }
+//            console.error(`Error retrieving record for stack ID ${id}:`, e);
+//            throw new Error("Issue reading file or processing payload data.");
+//        }
+//    }
+//
+//    private async loadJSON(filename: string): Promise<any> {
+//        const buffer = await fs.readFile(filename, "utf8");
+//        return JSON.parse(buffer);
+//    }
 }

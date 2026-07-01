@@ -8,7 +8,7 @@ const EmitterStatus = Object.freeze({
     ReadEmpty: 'ReadEmpty',
 })
 
-class LockManager {
+export class LockManager {
 
     private filePath : string = "";
 
