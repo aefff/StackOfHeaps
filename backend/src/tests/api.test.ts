@@ -1,7 +1,8 @@
-import { describe, test, expect, afterAll } from 'vitest';
+import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import dotenv from 'dotenv';
 import * as fs from 'fs/promises';
 import { Pool } from 'pg';
+import { app } from '../server.js';
 
 dotenv.config();
 
@@ -14,22 +15,30 @@ const pool = new Pool({
 });
 
 const BASE_URL = 'http://localhost:3000/api';
+let runningServer: any;
 
 describe('StackOHeaps API Integration Tests', () => {
+
+    beforeAll(async () => {
+        runningServer = app.listen(3000);
+    });
 
     afterAll(async () => {
         console.log('\nCleaning up test database records and files...');
         try {
             await pool.query('TRUNCATE TABLE users, projects RESTART IDENTITY CASCADE;');
             await fs.rm('./storage', { recursive: true, force: true });
-
             console.log('Test environment cleaned successfully.');
         } catch (err: any) {
             console.error('Failed to clean up:', err.message);
         } finally {
             await pool.end();
+            if (runningServer) {
+                await runningServer.close();
+            }
         }
     });
+
     test('GET /api/test should return status 200', async () => {
         const res = await fetch(`${BASE_URL}/test`);
         expect(res.status).toBe(200);
@@ -41,14 +50,9 @@ describe('StackOHeaps API Integration Tests', () => {
         const res = await fetch(`${BASE_URL}/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: randomUser,
-                password: 'test_secure_password'
-            })
+            body: JSON.stringify({ username: randomUser, password: 'test_secure_password' })
         });
-
         const data = await res.json();
-
         expect(res.status).toBe(201);
         expect(data.user.username).toBe(randomUser);
     });
@@ -57,12 +61,8 @@ describe('StackOHeaps API Integration Tests', () => {
         const res = await fetch(`${BASE_URL}/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: randomUser,
-                password: 'different_password'
-            })
+            body: JSON.stringify({ username: randomUser, password: 'different_password' })
         });
-
         expect(res.status).toBe(409);
     });
 
@@ -70,12 +70,8 @@ describe('StackOHeaps API Integration Tests', () => {
         const res = await fetch(`${BASE_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: randomUser,
-                password: 'test_secure_password'
-            })
-        })
-
+            body: JSON.stringify({ username: randomUser, password: 'test_secure_password' })
+        });
         expect(res.status).toBe(200);
     });
 
@@ -83,12 +79,8 @@ describe('StackOHeaps API Integration Tests', () => {
         const res = await fetch(`${BASE_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: randomUser,
-                password: 'different_password'
-            })
+            body: JSON.stringify({ username: randomUser, password: 'different_password' })
         });
-
         expect(res.status).toBe(400);
     });
 
@@ -96,10 +88,7 @@ describe('StackOHeaps API Integration Tests', () => {
         const loginRes = await fetch(`${BASE_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: randomUser,
-                password: 'test_secure_password'
-            })
+            body: JSON.stringify({ username: randomUser, password: 'test_secure_password' })
         });
         const { token } = await loginRes.json();
 
@@ -108,10 +97,14 @@ describe('StackOHeaps API Integration Tests', () => {
             stackId: "abc-123-xyz",
             rawStackData: {
                 id: "abc-123-xyz",
-                version: 1,
-                elements: [
-                    { heapId: 1, type: "max-heap", values: [99, 50, 12] },
-                    { heapId: 2, type: "min-heap", values: [1, 5, 8] }
+                size: 1,
+                stack: [
+                    {
+                        name: "Backend System",
+                        heap: {
+                            heap: [{ name: "High Priority task", priority: 100 }]
+                        }
+                    }
                 ]
             }
         };
@@ -137,10 +130,7 @@ describe('StackOHeaps API Integration Tests', () => {
         const loginRes = await fetch(`${BASE_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: randomUser,
-                password: 'test_secure_password'
-            })
+            body: JSON.stringify({ username: randomUser, password: 'test_secure_password' })
         });
         const { token } = await loginRes.json();
         const projectId = (global as any).testProjectId;
@@ -151,25 +141,19 @@ describe('StackOHeaps API Integration Tests', () => {
         });
 
         expect(res.status).toBe(200);
-        expect(res.headers.get('content-type')).toContain('application/json');
 
         const streamedData = await res.json();
         expect(streamedData.id).toBe("abc-123-xyz");
-        expect(streamedData.elements[0].values[0]).toBe(99);
+        expect(streamedData.stack[0].name).toBe("Backend System");
     });
 
     test('DELETE /api/auth/deleteAccount should fail with incorrect password', async () => {
-        // 1. Log in first to capture a fresh valid JWT token
         const loginRes = await fetch(`${BASE_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: randomUser,
-                password: 'test_secure_password'
-            })
+            body: JSON.stringify({ username: randomUser, password: 'test_secure_password' })
         });
-        const loginData = await loginRes.json();
-        const token = loginData.token;
+        const { token } = await loginRes.json();
 
         const res = await fetch(`${BASE_URL}/auth/deleteAccount`, {
             method: 'DELETE',
@@ -177,10 +161,7 @@ describe('StackOHeaps API Integration Tests', () => {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({
-                username: randomUser,
-                password: 'wrong_password_here'
-            })
+            body: JSON.stringify({ username: randomUser, password: 'wrong_password_here' })
         });
 
         expect(res.status).toBe(400);
@@ -192,13 +173,9 @@ describe('StackOHeaps API Integration Tests', () => {
         const loginRes = await fetch(`${BASE_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: randomUser,
-                password: 'test_secure_password'
-            })
+            body: JSON.stringify({ username: randomUser, password: 'test_secure_password' })
         });
-        const loginData = await loginRes.json();
-        const token = loginData.token;
+        const { token } = await loginRes.json();
 
         const res = await fetch(`${BASE_URL}/auth/deleteAccount`, {
             method: 'DELETE',
@@ -206,10 +183,7 @@ describe('StackOHeaps API Integration Tests', () => {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({
-                username: randomUser,
-                password: 'test_secure_password'
-            })
+            body: JSON.stringify({ username: randomUser, password: 'test_secure_password' })
         });
 
         expect(res.status).toBe(200);
@@ -217,10 +191,7 @@ describe('StackOHeaps API Integration Tests', () => {
         const verifyRes = await fetch(`${BASE_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: randomUser,
-                password: 'test_secure_password'
-            })
+            body: JSON.stringify({ username: randomUser, password: 'test_secure_password' })
         });
 
         expect(verifyRes.status).toBe(400);

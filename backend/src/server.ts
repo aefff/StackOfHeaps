@@ -3,11 +3,15 @@ import dotenv from 'dotenv';
 import { Pool } from 'pg';
 import authRouter from './routes/auth.js';
 import projectsRouter from './routes/projects.js';
+import {StorageHandler} from "./utils/storage.js";
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
+
+const storageHandler = new StorageHandler('./storage');
+app.set('storageHandler', storageHandler);
 
 const isTest = process.env.NODE_ENV === 'test';
 
@@ -30,6 +34,11 @@ app.get('/api/test', (req: Request, res: Response) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server started on port ${PORT}`);
-});
+
+if (process.env.NODE_ENV !== 'test' && require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Server started on port ${PORT}`);
+    });
+}
+
+export { app };

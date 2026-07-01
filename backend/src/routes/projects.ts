@@ -1,9 +1,26 @@
 import express, { Response } from 'express';
-import * as fs from 'fs';
 import { Pool } from 'pg';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth.js';
+import { StorageHandler } from '../utils/storage.js';
+import { HeapStack } from '../utils/stack.js';
 
 const router = express.Router();
+
+router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+    const pool: Pool = req.app.get('pool');
+
+    try {
+        const result = await pool.query(
+            'SELECT id, project_name, created_at FROM projects WHERE user_id = $1 ORDER BY created_at DESC;',
+            [req.user!.id]
+        );
+
+        return res.status(200).json({ projects: result.rows });
+    } catch (error: any) {
+        console.error("Fetch projects list error:", error.message);
+        return res.status(500).json({ error: "Internal Server Error" });
+    }
+});
 
 router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     const { projectName, stackId, rawStackData } = req.body;
@@ -12,16 +29,22 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response): 
         return res.status(400).json({ error: "Missing projectName, stackId, or rawStackData" });
     }
 
-    const filePath = `./storage/stack_${stackId}.json`;
     const pool: Pool = req.app.get('pool');
+    const storageHandler: StorageHandler = req.app.get('storageHandler');
 
     try {
-        await fs.promises.mkdir('./storage', { recursive: true });
-        await fs.promises.writeFile(filePath, JSON.stringify(rawStackData, null, 2), "utf8");
+        const stackInstance = HeapStack.fromRawStack({
+            id: stackId,
+            ...rawStackData
+        });
+
+        await storageHandler.storeNewRecord(stackInstance, req.user!.username);
+
+        const filePath = storageHandler.getFilePath(stackId);
 
         const result = await pool.query(
             `INSERT INTO projects (project_name, user_id, file_path) 
-             VALUES ($1, $2, $3) RETURNING *;`,
+             VALUES ($1, $2, $3) RETURNING id, project_name, file_path, created_at;`,
             [projectName, req.user!.id, filePath]
         );
 
@@ -41,6 +64,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response): 
 
 router.get('/:id/stream', requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     const pool: Pool = req.app.get('pool');
+    const storageHandler: StorageHandler = req.app.get('storageHandler');
 
     try {
         const projectCheck = await pool.query(
@@ -54,21 +78,19 @@ router.get('/:id/stream', requireAuth, async (req: AuthenticatedRequest, res: Re
 
         const targetFilePath = projectCheck.rows[0].file_path;
 
-        res.setHeader('Content-Type', 'application/json');
+        const stackId = targetFilePath
+            .replace(/^.*stack_/, '')
+            .replace(/\.json$/, '');
 
-        const fileStream = fs.createReadStream(targetFilePath);
+        const loadedStack = await storageHandler.retrieveRecord(stackId, req.user!.username);
 
-        fileStream.on('error', (err: any) => {
-            console.error("Disk stream read failure:", err.message);
-            if (!res.headersSent) {
-                res.status(404).json({ error: "Physical stack record file missing on disk" });
-            }
-        });
-
-        fileStream.pipe(res);
+        return res.status(200).json(loadedStack.exportRawStack());
 
     } catch (error: any) {
         console.error("Stream initialization error:", error.message);
+        if (error.message && error.message.includes("Record not found")) {
+            return res.status(404).json({ error: error.message });
+        }
         return res.status(500).json({ error: "Internal Server Error" });
     }
 });

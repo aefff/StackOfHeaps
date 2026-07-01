@@ -11,7 +11,7 @@ export class StorageHandler {
         this.storageDir = storageDir;
     }
 
-    private getFilePath(id: string): string {
+    getFilePath(id: string): string {
         return `${this.storageDir}/stack_${id}.json`;
     }
 
