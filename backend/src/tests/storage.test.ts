@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
-import { StorageHandler } from '../storage.js';
-import { HeapStack } from '../stack.js';
-import { TaskHeap } from '../heap.js';
+import { StorageHandler } from '../utils/storage.js';
+import { HeapStack } from '../utils/stack.js';
+import { TaskHeap } from '../utils/heap.js';
 
 describe('StorageHandler - Integration Tests', () => {
     const TEST_DIR = './test_storage';

@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import { Pool } from 'pg';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import projectsRouter from './backend/src/routes/projects.js';
+import projectsRouter from './routes/projects.js';
 
 dotenv.config();
 

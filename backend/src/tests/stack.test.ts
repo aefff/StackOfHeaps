@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { HeapStack } from '../stack.js';
-import { TaskHeap } from '../heap.js';
+import { HeapStack } from '../utils/stack.js';
+import { TaskHeap } from '../utils/heap.js';
 
 describe('Heap Stack - Project Layer Operations', () => {
 

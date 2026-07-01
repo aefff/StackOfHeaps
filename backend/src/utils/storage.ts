@@ -64,10 +64,11 @@ export class StorageHandler {
         } catch (e: any) {
             if (e.code === "ENOENT") {
                 console.error(`Record not found: No file exists for id: `, id);
+                throw new Error(`Record not found: No file exists for stack ID ${id}`);
             } else {
                 console.error(`Error retrieving record for stack ID ${id}:`, e);
+                throw new Error("Issue reading file or processing payload data.");
             }
-            throw e;
         } finally {
             lock.releaseRead(requesterUUID);
         }

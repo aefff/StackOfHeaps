@@ -1,6 +1,6 @@
 import {describe, it, expect} from 'vitest';
 
-import {TaskHeap} from "../heap.js";
+import {TaskHeap} from "../utils/heap.js";
 
 describe('Task Heap Core Ops', () => {
     it('Should create a new task heap instance', () => {
