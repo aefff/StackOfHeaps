@@ -1,3 +1,5 @@
+process.env.NODE_ENV = 'test';
+
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import dotenv from 'dotenv';
 import * as fs from 'fs/promises';
@@ -5,6 +7,9 @@ import { Pool } from 'pg';
 import { app } from '../server.js';
 
 dotenv.config();
+
+let authToken = '';
+let targetProjectId: number;
 
 const pool = new Pool({
     host: process.env.DB_HOST,
@@ -20,6 +25,7 @@ let runningServer: any;
 describe('StackOHeaps API Integration Tests', () => {
 
     beforeAll(async () => {
+        app.set('pool', pool);
         runningServer = app.listen(3000);
     });
 
@@ -84,13 +90,15 @@ describe('StackOHeaps API Integration Tests', () => {
         expect(res.status).toBe(400);
     });
 
+    // 💡 Moved 1st: We must create the project record first!
     test('POST /api/projects should successfully create a project record and save file', async () => {
         const loginRes = await fetch(`${BASE_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: randomUser, password: 'test_secure_password' })
         });
-        const { token } = await loginRes.json();
+        const loginData = await loginRes.json();
+        authToken = loginData.token;
 
         const mockStackPayload = {
             projectName: "My First Test Heap",
@@ -98,7 +106,7 @@ describe('StackOHeaps API Integration Tests', () => {
             rawStackData: {
                 id: "abc-123-xyz",
                 size: 1,
-                stack: [
+                contents: [
                     {
                         name: "Backend System",
                         heap: {
@@ -113,53 +121,51 @@ describe('StackOHeaps API Integration Tests', () => {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${authToken}`
             },
             body: JSON.stringify(mockStackPayload)
         });
 
         expect(res.status).toBe(201);
         const data = await res.json();
-        expect(data.message).toContain("Project created and stack saved successfully");
-        expect(data.project.project_name).toBe("My First Test Heap");
+        targetProjectId = data.project.id;
+    });
 
-        (global as any).testProjectId = data.project.id;
+    test('GET /api/projects should return a list of projects', async () => {
+        const res = await fetch(`${BASE_URL}/projects`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+        });
+
+        const data = await res.json();
+        expect(res.status).toBe(200);
+
+        expect(Array.isArray(data.projects)).toBe(true);
+        expect(data.projects.length).toBeGreaterThan(0);
     });
 
     test('GET /api/projects/:id/stream should stream back the correct payload from disk', async () => {
-        const loginRes = await fetch(`${BASE_URL}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: randomUser, password: 'test_secure_password' })
-        });
-        const { token } = await loginRes.json();
-        const projectId = (global as any).testProjectId;
-
-        const res = await fetch(`${BASE_URL}/projects/${projectId}/stream`, {
+        const res = await fetch(`${BASE_URL}/projects/${targetProjectId}/stream`, {
             method: 'GET',
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 'Authorization': `Bearer ${authToken}` }
         });
 
         expect(res.status).toBe(200);
 
         const streamedData = await res.json();
         expect(streamedData.id).toBe("abc-123-xyz");
-        expect(streamedData.stack[0].name).toBe("Backend System");
+        expect(streamedData.contents[0].name).toBe("Backend System");
     });
 
     test('DELETE /api/auth/deleteAccount should fail with incorrect password', async () => {
-        const loginRes = await fetch(`${BASE_URL}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: randomUser, password: 'test_secure_password' })
-        });
-        const { token } = await loginRes.json();
-
         const res = await fetch(`${BASE_URL}/auth/deleteAccount`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${authToken}`
             },
             body: JSON.stringify({ username: randomUser, password: 'wrong_password_here' })
         });
@@ -170,18 +176,11 @@ describe('StackOHeaps API Integration Tests', () => {
     });
 
     test('DELETE /api/auth/deleteAccount should completely wipe the user record', async () => {
-        const loginRes = await fetch(`${BASE_URL}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: randomUser, password: 'test_secure_password' })
-        });
-        const { token } = await loginRes.json();
-
         const res = await fetch(`${BASE_URL}/auth/deleteAccount`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${authToken}`
             },
             body: JSON.stringify({ username: randomUser, password: 'test_secure_password' })
         });

@@ -15,9 +15,8 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response): P
             [req.user!.id]
         );
 
-        return res.status(200).json({ projects: result.rows });
+        return res.status(200).json({message: "Retrieved successfully", projects: result.rows });
     } catch (error: any) {
-        console.error("Fetch projects list error:", error.message);
         return res.status(500).json({ error: "Internal Server Error" });
     }
 });
@@ -33,10 +32,22 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response): 
     const storageHandler: StorageHandler = req.app.get('storageHandler');
 
     try {
+        let parsedStackData = rawStackData;
+        if (typeof rawStackData === 'string') {
+            try {
+                parsedStackData = JSON.parse(rawStackData);
+            } catch (jsonErr) {
+                return res.status(400).json({ error: "Invalid JSON format in rawStackData" });
+            }
+        }
+
         const stackInstance = HeapStack.fromRawStack({
             id: stackId,
-            ...rawStackData
+            ...parsedStackData
         });
+
+        const fs = await import('fs/promises');
+        await fs.mkdir('./storage', { recursive: true });
 
         await storageHandler.storeNewRecord(stackInstance, req.user!.username);
 
@@ -48,17 +59,23 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response): 
             [projectName, req.user!.id, filePath]
         );
 
+
+        const data = result.rows[0];
         return res.status(201).json({
             message: "Project created and stack saved successfully",
-            project: result.rows[0]
+            project: data
         });
 
     } catch (error: any) {
-        console.error("Project creation error:", error.message);
+        console.error("Project creation error:", error.message || error);
+
         if (error.code === '23505') {
             return res.status(409).json({ error: "File path or project conflict already exists." });
         }
-        return res.status(500).json({ error: "Internal Server Error" });
+
+        return res.status(500).json({
+            error: `Internal Server Error (${error.message || 'Unknown processing failure'})`
+        });
     }
 });
 

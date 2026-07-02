@@ -17,11 +17,24 @@ export class HeapStack {
         }))};
     }
 
-    public static fromRawStack(raw: snapStack): HeapStack {
-        const newStack = new HeapStack(raw.id);
-        for (const h of raw.contents) {
-            newStack.pushStack(h.name, TaskHeap.fromRawHeap(h.heap));
+    public static fromRawStack(raw: any): HeapStack {
+        const targetId = raw.id || "unknown-id";
+        const newStack = new HeapStack(targetId);
+
+        let list: any[] = [];
+        if (Array.isArray(raw)) {
+            list = raw;
+        } else if (raw && Array.isArray(raw.contents)) {
+            list = raw.contents;
+        } else if (raw && Array.isArray(raw.stack)) {
+            list = raw.stack;
         }
+
+        for (const h of list) {
+            const rawHeapArray = (h.heap && Array.isArray(h.heap.heap)) ? h.heap.heap : h.heap;
+            newStack.pushStack(h.name, TaskHeap.fromRawHeap(rawHeapArray || []));
+        }
+
         return newStack;
     }
 

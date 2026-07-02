@@ -1,4 +1,4 @@
-const EventEmitter = require('events').EventEmitter;
+import {EventEmitter} from "node:events";
 
 const EmitterStatus = Object.freeze({
     ReadRequest: 'ReadRequest',

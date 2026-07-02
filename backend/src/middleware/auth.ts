@@ -18,9 +18,14 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
     const token = authHeader.split(' ')[1];
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as { userId: number; username: string };
+        const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as any;
 
-        req.user = { id: decoded.userId, username: decoded.username };
+        const parsedId = decoded.userId || decoded.id;
+
+        req.user = {
+            id: Number(parsedId),
+            username: decoded.username
+        };
 
         next();
     } catch (error) {
